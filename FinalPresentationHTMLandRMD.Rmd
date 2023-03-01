@@ -1,0 +1,163 @@
+---
+title: "Final Project"
+author: "Alejandro Pacheco"
+date: "2022-12-06"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(anyflights)
+library(dplyr)
+library(readr)
+library(lubridate)
+library(plotly)
+library(ggplot2)
+```
+
+## Data frame code
+```{r}
+LAXflights<-read.csv("C:/Users/Alejandro Pacheco/OneDrive - Emory University/Documents/LAXflights.csv",header=TRUE,stringsAsFactors = FALSE)
+#LAXflights
+
+ATLflights<-read.csv("C:/Users/Alejandro Pacheco/OneDrive - Emory University/Documents/ATLflights.csv",header=TRUE,stringsAsFactors = FALSE)
+
+DAL<-read.csv("C:/Users/Alejandro Pacheco/OneDrive - Emory University/Documents/DAL.csv",header=TRUE,stringsAsFactors = FALSE)
+#ATLflights
+
+write.csv(LAXflights, file = "LAXflights.csv")
+write.csv(ATLflights, file = "ATLflights.csv")
+
+AvgDALPrice <- mutate(DAL, avg_daily = (High + Low)/2)
+
+CanceledLAX <- mutate(LAXflights, canceled = is.na(dep_time))
+CanceledATL <- mutate(ATLflights, canceled = is.na(dep_time))
+
+CanceledLAX <- mutate(CanceledLAX, flight_date = as_date(CanceledLAX$time_hour))
+CanceledATL <- mutate(CanceledATL, flight_date = as_date(CanceledATL$time_hour))
+
+
+CanceledCountLAX <- 0
+OtherCountLAX <- 0
+cancelPropLAX = vector()
+
+CanceledCountATL <- 0
+
+OtherCountATL <- 0
+cancelPropATL = vector()
+k <- 1
+i <- 1
+
+for(j in 1:1096) {
+  for(k in k:length(CanceledLAX$flight_date)) {
+    if((j-j%/%731+j%/%366)%%366 == yday(CanceledLAX$flight_date[k]) | j == 731) {
+      if (CanceledLAX$canceled[k] == TRUE) {
+        CanceledCountLAX <- CanceledCountLAX + 1
+      }
+      else {
+        OtherCountLAX <- OtherCountLAX + 1
+      }
+    }
+    else {
+      break
+    }
+  }
+  cancelPropLAX[j] <- CanceledCountLAX / (OtherCountLAX+CanceledCountLAX)
+}
+
+for(j in 1:1096) {
+  for(i in i:length(CanceledATL$flight_date)) {
+    if((j-j%/%731+j%/%366)%%366 == yday(CanceledATL$flight_date[i]) | j == 731) {
+      if (CanceledATL$canceled[i] == TRUE) {
+        CanceledCountATL <- CanceledCountATL + 1
+      }
+      else {
+        OtherCountATL <- OtherCountATL + 1
+      }
+    }
+    else {
+      break
+    }
+  }
+  cancelPropATL[j] <- CanceledCountATL / (OtherCountATL+CanceledCountATL)
+}
+
+cancelProp <- data.frame(cancelPropATL, cancelPropLAX)
+```
+
+## Average Stock Price for Delta
+```{r}
+ggplot(DAL,aes(x=Date,y=Close))+
+  geom_line()
+```
+
+
+
+
+## Percentage of flights cancelled for the past 3 years   
+```{r}
+cancel<-cancelPropATL[1:755]
+AvgDALPrice <- mutate(DAL, avg_daily = (High + Low)/2)
+new_table<-data.frame(cancel,AvgDALPrice)
+
+ggplot(new_table,aes(x=Date,y=cancel))+
+  geom_line()
+```
+
+
+## Relationship between average stock price and the percentage of cancelled flights
+```{r}
+cancel<-cancelPropATL[1:755]
+AvgDALPrice <- mutate(DAL, avg_daily = (High + Low)/2)
+new_table<-data.frame(cancel,AvgDALPrice)
+
+
+new_table %>%
+  plot_ly(x = ~cancel, y = ~avg_daily) %>%
+  filter(cancel<0.0081) %>%
+  add_lines()
+```
+
+
+## Cancelation percentage based on the first three months of Covid
+```{r}
+cancel<-cancelPropATL[1:755]
+AvgDALPrice <- mutate(DAL, avg_daily = (High + Low)/2)
+new_table<-data.frame(cancel,AvgDALPrice)
+
+new_table[60:120,1:9]%>%
+  ggplot(aes(x=Date,y=cancel))+
+  geom_line()
+```
+
+## Average stock price during the first three months of covid
+```{r}
+cancel<-cancelPropATL[1:755]
+AvgDALPrice <- mutate(DAL, avg_daily = (High + Low)/2)
+new_table<-data.frame(cancel,AvgDALPrice)
+
+new_table[60:120,1:9]%>%
+  ggplot(aes(x=Date,y=avg_daily))+
+  geom_line()
+```
+
+
+## Cronological view of the relationship between flight cancelationsand Delta stock at LAX airport
+```{r}
+cancel<-cancelPropATL[1:755]
+AvgDALPrice <- mutate(DAL, avg_daily = (High + Low)/2)
+new_table<-data.frame(cancel,AvgDALPrice)
+
+Date<-new_table$Date[60:400]
+AvgStockPrice<-new_table$cancel[60:400]*6200
+y2<-new_table$avg_daily[60:400]
+df<-data.frame(AvgStockPrice,y2)
+
+ggplot(df,aes(Date))+
+  geom_line(aes(y=AvgStockPrice),color="red")+
+  geom_line(aes(y=y2),color="blue")
+```
+
